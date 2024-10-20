@@ -43,7 +43,8 @@
 		{ "_id": "37", "value": "Chilean" },
 		{ "_id": "38", "value": "Peruvian" },
 		{ "_id": "39", "value": "Swiss" },
-		{ "_id": "40", "value": "Belgian" }
+		{ "_id": "40", "value": "Belgian" },
+		{ "_id": "41", "value": "Jordan" }
 	],
 	"ALLERGIES": [
 		{ "_id": "peanuts", "value": "Peanuts" },

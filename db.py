@@ -10,8 +10,11 @@ class Database:
         password = os.getenv("DB_PASSWORD")
         db_name = os.getenv("DB_NAME")
 
-        self.conn = pyodbc.connect(
-            'DRIVER={ODBC Driver 18 for SQL Server};SERVER=%s;DATABASE=%s;Trusted_Connection=yes;TrustServerCertificate=yes' % (server, db_name))
+        connection_string = 'DRIVER={ODBC Driver 18 for SQL Server};SERVER=%s;DATABASE=%s;UID=%s;PWD=%s;TrustServerCertificate=yes' % (
+            server, db_name, user, password)
+        # print(connection_string)
+
+        self.conn = pyodbc.connect(connection_string)
 
         self.cursor = self.conn.cursor()
 
@@ -30,6 +33,8 @@ class Database:
         return False
 
     def check_user_phone_given_email(self, email: str, phone: str):
+        if phone[0] != "0":
+            phone = "0" + phone
         self.cursor.execute(
             "SELECT * FROM Subscribers_mtbl where CUST_EMAIL = ? AND CUST_MobileNo = ?", email, phone)
         row = self.cursor.fetchone()
@@ -49,7 +54,7 @@ class Database:
         return False
 
     def insert_user(self, data: dict):
-        birthdate = data['birthdate'].split("T")[0]
+        birthDate = data['birthDate'].split("T")[0]
         gender = data['gender'][0].upper()
         nationalities = json.loads(open("data.json", 'r').read())[
             "NATIONALITIES"]
@@ -58,7 +63,9 @@ class Database:
             if nationality["value"] == data['nationality']:
                 nationality_id = nationality["_id"]
 
-        print(data)
+        mobileNumber = data['mobileNumber']
+        if mobileNumber[0] != "0":
+            mobileNumber = "0" + mobileNumber
 
         params = (
             0,
@@ -67,15 +74,16 @@ class Database:
             data['lname'],
             int(nationality_id),
             data['internationalCode'],
-            data['mobileNumber'],
+            mobileNumber,
             data['email'].lower(),
             gender,
-            birthdate,
+            birthDate,
             data['allergy']
         )
+        print("REGISTERING USER", params)
 
         self.cursor.execute("""
-            EXEC dbo.Apply_Registration_SP 
+            EXEC dbo.Apply_Registraion_SP 
                 @mCUST_CODE = ?, 
                 @mCUST_QRCODE = ?, 
                 @mCUST_FNAME = ?, 
@@ -91,3 +99,34 @@ class Database:
 
         self.conn.commit()
         return {"status": "User registered"}
+
+    def update_user_allergies(self, user_id: int, new_allergy: str):
+        self.cursor.execute(
+            "UPDATE Subscribers_mtbl SET CUST_ALERGY = ? WHERE CUST_CODE = ?", new_allergy, user_id)
+        self.conn.commit()
+        return {"status": "User allergy updated"}
+
+    def update_user_birthdate(self, user_id: int, new_birthdate: str):
+        self.cursor.execute(
+            "UPDATE Subscribers_mtbl SET CUST_BIRTHDATE = ? WHERE CUST_CODE = ?", new_birthdate, user_id)
+        self.conn.commit()
+        return {"status": "User birthdate updated"}
+
+    def get_sales_counter(self, user_id: str):
+        self.cursor.execute(
+            "SELECT * FROM Subscribers_mtbl where CUST_CODE = ?", user_id)
+        row = self.cursor.fetchone()
+        return row.CUST_COUNTER
+
+    def update_profile(self, user_id: str, data: dict):
+        print(data)
+        id = user_id
+        birthDate = data['birthDate'].split("T")[0]
+        allergy = data['allergy']
+        fname = data['fname']
+        lname = data['lname']
+        gender = data["gender"][0].upper()
+
+        self.cursor.execute(
+            "UPDATE Subscribers_mtbl SET CUST_FNAME = ?, CUST_LNAME = ?, CUST_BIRTHDATE = ?, CUST_ALERGY = ?, CUST_GENDER = ? WHERE CUST_CODE = ?", fname, lname, birthDate, allergy, gender, id)
+        return {"status": "User profile updated"}
